@@ -233,6 +233,14 @@ export const apiService = {
     setWebcamToggle: (webcam_enabled: boolean) => 
         api.post('/admin/settings/webcam-toggle', { webcam_enabled }),
 
+    // User Survey History
+    getUserSurveyHistory: (force_id: string) =>
+        api.get(`/admin/user-survey-history/${force_id}`),
+
+    // Get specific survey session responses
+    getSurveySessionResponses: (session_id: number) =>
+        api.get(`/admin/survey-session-responses/${session_id}`),
+
     translateAnswer
 };
 

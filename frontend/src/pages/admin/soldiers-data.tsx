@@ -77,6 +77,42 @@ interface Soldier {
     questionnaire_title: string;
 }
 
+interface QuestionResponse {
+    response_id: number;
+    question_id: number;
+    question_text: string;
+    question_text_hindi: string;
+    answer_text: string;
+    timestamp: string;
+}
+
+interface SurveySession {
+    session_id: number;
+    questionnaire_id: number;
+    questionnaire_title: string;
+    questionnaire_description: string;
+    start_timestamp: string;
+    completion_timestamp: string;
+    completion_date: string;
+    completion_time: string;
+    status: string;
+    scores: {
+        nlp_score: number;
+        image_score: number;
+        combined_score: number;
+        mental_state_score: number | null;
+    };
+    risk_level: 'LOW' | 'MID' | 'HIGH' | 'CRITICAL';
+    mental_state: {
+        rating: number;
+        emoji: string;
+        text_en: string;
+        text_hi: string;
+        color: string;
+    } | null;
+    question_count: number; // Number of questions available
+}
+
 interface SoldiersResponse {
     soldiers: Soldier[];
     pagination: {
@@ -106,6 +142,16 @@ const SoldiersData: React.FC = () => {
     const [error, setError] = useState<string | null>(null);
     const [downloadingPDF, setDownloadingPDF] = useState(false);
     const [downloadingCSV, setDownloadingCSV] = useState(false);
+
+    // New states for survey detail view
+    const [showSurveyHistory, setShowSurveyHistory] = useState(false);
+    const [selectedUserForceId, setSelectedUserForceId] = useState<string | null>(null);
+    const [userSurveyHistory, setUserSurveyHistory] = useState<SurveySession[]>([]);
+    const [loadingSurveyHistory, setLoadingSurveyHistory] = useState(false);
+    const [surveyHistoryError, setSurveyHistoryError] = useState<string | null>(null);
+    const [expandedQuestionResponses, setExpandedQuestionResponses] = useState<Set<number>>(new Set());
+    const [loadingResponses, setLoadingResponses] = useState<Set<number>>(new Set());
+    const [sessionResponses, setSessionResponses] = useState<Map<number, QuestionResponse[]>>(new Map());
 
     const fetchSoldiersData = useCallback(async () => {
         setLoading(true);
@@ -159,6 +205,80 @@ const SoldiersData: React.FC = () => {
     const handleForceIdFilterChange = (newForceId: string) => {
         setForceIdFilter(newForceId);
         setCurrentPage(1); // Reset to first page when filter changes
+    };
+
+    // New function to fetch and display user survey history
+    const fetchUserSurveyHistory = async (forceId: string) => {
+        setLoadingSurveyHistory(true);
+        setSurveyHistoryError(null);
+        setSelectedUserForceId(forceId);
+        setShowSurveyHistory(true);
+        
+        try {
+            const response = await apiService.getUserSurveyHistory(forceId);
+            setUserSurveyHistory(response.data.surveys);
+        } catch (err: any) {
+            setSurveyHistoryError(err.response?.data?.error || 'Failed to fetch user survey history');
+            console.error('Error fetching user survey history:', err);
+        } finally {
+            setLoadingSurveyHistory(false);
+        }
+    };
+
+    // Function to go back to main table view
+    const handleBackToMainView = () => {
+        setShowSurveyHistory(false);
+        setSelectedUserForceId(null);
+        setUserSurveyHistory([]);
+        setSurveyHistoryError(null);
+        setExpandedQuestionResponses(new Set());
+        setLoadingResponses(new Set());
+        setSessionResponses(new Map());
+    };
+
+    // Function to toggle question responses visibility and load them if needed
+    const toggleQuestionResponses = async (sessionId: number) => {
+        if (expandedQuestionResponses.has(sessionId)) {
+            // If already expanded, just collapse
+            setExpandedQuestionResponses(prev => {
+                const newSet = new Set(prev);
+                newSet.delete(sessionId);
+                return newSet;
+            });
+        } else {
+            // If not expanded, expand and load responses if not already loaded
+            setExpandedQuestionResponses(prev => {
+                const newSet = new Set(prev);
+                newSet.add(sessionId);
+                return newSet;
+            });
+
+            // Load responses if not already loaded
+            if (!sessionResponses.has(sessionId)) {
+                setLoadingResponses(prev => {
+                    const newSet = new Set(prev);
+                    newSet.add(sessionId);
+                    return newSet;
+                });
+
+                try {
+                    const response = await apiService.getSurveySessionResponses(sessionId);
+                    setSessionResponses(prev => {
+                        const newMap = new Map(prev);
+                        newMap.set(sessionId, response.data.question_responses);
+                        return newMap;
+                    });
+                } catch (error) {
+                    console.error('Error loading question responses:', error);
+                } finally {
+                    setLoadingResponses(prev => {
+                        const newSet = new Set(prev);
+                        newSet.delete(sessionId);
+                        return newSet;
+                    });
+                }
+            }
+        }
     };
 
     const getRiskLevelColor = (riskLevel: string) => {
@@ -258,8 +378,11 @@ const SoldiersData: React.FC = () => {
                 </div>
 
                 <div className="max-w-7xl mx-auto relative z-10">
-                    {/* Header */}
-                    <div className="bg-white/80 backdrop-blur-xl rounded-xl p-6 shadow-xl border border-white/20 mb-6">
+                    {/* Main Table View */}
+                    {!showSurveyHistory && (
+                        <>
+                            {/* Header */}
+                            <div className="bg-white/80 backdrop-blur-xl rounded-xl p-6 shadow-xl border border-white/20 mb-6">
                         <div className="flex items-center mb-3">
                             <div className="w-10 h-10 bg-gradient-to-br from-orange-500 via-white to-green-500 rounded-full flex items-center justify-center mr-3 shadow-lg">
                                 <div className="w-6 h-6 bg-blue-600 rounded-full flex items-center justify-center">
@@ -414,32 +537,6 @@ const SoldiersData: React.FC = () => {
                 )}
 
                 {/* Data Summary */}
-                {!loading && allFilteredData.length > 0 && (
-                    <div className="mb-6 bg-blue-50/80 backdrop-blur-xl border border-blue-200 text-blue-800 px-6 py-4 rounded-2xl shadow-lg">
-                        <div className="flex flex-col md:flex-row md:justify-between md:items-center">
-                            <div className="flex items-center mb-3 md:mb-0">
-                                <i className="fas fa-info-circle text-blue-600 mr-3"></i>
-                                <div>
-                                    <strong>Total Records Available for Download:</strong> {allFilteredData.length} users
-                                    {pagination && (
-                                        <span className="ml-4 text-sm">
-                                            (Showing {soldiersData.length} of {pagination.total_count} on this page)
-                                        </span>
-                                    )}
-                                </div>
-                            </div>
-                            <div className="flex flex-wrap gap-2">
-                                <span className="text-xs bg-blue-100 px-3 py-1 rounded-full border border-blue-200">
-                                    Filters Applied: 
-                                    {filter !== 'all' && ` Risk: ${filter.toUpperCase()}`}
-                                    {daysFilter && ` | Period: ${daysFilter} days`}
-                                    {forceIdFilter && ` | Force ID: ${forceIdFilter}`}
-                                </span>
-                            </div>
-                        </div>
-                    </div>
-                )}
-
                 {/* Loading State */}
                 {loading && (
                     <div className="bg-white/80 backdrop-blur-xl rounded-2xl shadow-2xl p-12 text-center border border-white/20">
@@ -501,7 +598,12 @@ const SoldiersData: React.FC = () => {
                                         </tr>
                                     ) : (
                                         soldiersData.map((soldier, index) => (
-                                            <tr key={soldier.force_id} className={`hover:bg-blue-50/50 transition-colors duration-200 ${index % 2 === 0 ? 'bg-white/30' : 'bg-gray-50/30'}`}>
+                                            <tr 
+                                                key={soldier.force_id} 
+                                                className={`hover:bg-blue-50/50 transition-colors duration-200 cursor-pointer ${index % 2 === 0 ? 'bg-white/30' : 'bg-gray-50/30'}`}
+                                                onClick={() => fetchUserSurveyHistory(soldier.force_id)}
+                                                title="Click to view all survey history for this user"
+                                            >
                                                 {/* Soldier Info */}
                                                 <td className="px-6 py-4 whitespace-nowrap">
                                                     <div className="flex items-center">
@@ -657,6 +759,221 @@ const SoldiersData: React.FC = () => {
                                         <i className="fas fa-chevron-right ml-2"></i>
                                     </button>
                                 </div>
+                            </div>
+                        )}
+                    </div>
+                )}
+                        </>
+                    )}
+
+                {/* Survey History Detail View */}
+                {showSurveyHistory && (
+                    <div className="bg-white/80 backdrop-blur-xl rounded-2xl shadow-2xl overflow-hidden border border-white/20 mt-6">
+                        {/* Header with Back Button - Compact */}
+                        <div className="bg-gradient-to-r from-blue-600 to-purple-600 px-4 py-3 flex items-center justify-between">
+                            <div className="flex items-center">
+                                <button
+                                    onClick={handleBackToMainView}
+                                    className="bg-white/20 hover:bg-white/30 text-white px-3 py-1.5 rounded-md font-medium transition-all duration-200 flex items-center mr-3 text-sm"
+                                >
+                                    <i className="fas fa-arrow-left mr-2 text-sm"></i>
+                                    Back to Users
+                                </button>
+                                <div>
+                                    <h2 className="text-lg font-bold text-white">
+                                        Survey History - {selectedUserForceId}
+                                    </h2>
+                                    <p className="text-white/80 text-xs">
+                                        Complete survey history for this user
+                                    </p>
+                                </div>
+                            </div>
+                            <div className="text-white/80 text-xs">
+                                <i className="fas fa-history mr-1"></i>
+                                {userSurveyHistory.length} survey(s)
+                            </div>
+                        </div>
+
+                        {/* Loading State */}
+                        {loadingSurveyHistory && (
+                            <div className="p-12 text-center">
+                                <div className="animate-spin rounded-full h-16 w-16 border-4 border-blue-500 border-t-transparent mx-auto mb-6"></div>
+                                <p className="text-xl font-semibold text-gray-700">Loading survey history...</p>
+                                <p className="text-sm text-gray-500 mt-2">Please wait while we fetch the complete survey data</p>
+                            </div>
+                        )}
+
+                        {/* Error State */}
+                        {surveyHistoryError && (
+                            <div className="p-12 text-center">
+                                <div className="text-red-500 text-6xl mb-4">
+                                    <i className="fas fa-exclamation-triangle"></i>
+                                </div>
+                                <p className="text-xl font-semibold text-red-700">Error Loading Survey History</p>
+                                <p className="text-gray-600 mt-2">{surveyHistoryError}</p>
+                                <button
+                                    onClick={() => selectedUserForceId && fetchUserSurveyHistory(selectedUserForceId)}
+                                    className="mt-4 bg-blue-500 hover:bg-blue-600 text-white px-6 py-2 rounded-lg font-semibold transition-colors duration-200"
+                                >
+                                    <i className="fas fa-refresh mr-2"></i>
+                                    Try Again
+                                </button>
+                            </div>
+                        )}
+
+                        {/* Survey History Content */}
+                        {!loadingSurveyHistory && !surveyHistoryError && (
+                            <div className="p-4">
+                                {userSurveyHistory.length === 0 ? (
+                                    <div className="text-center py-8">
+                                        <div className="text-gray-400 text-4xl mb-3">
+                                            <i className="fas fa-clipboard-list"></i>
+                                        </div>
+                                        <p className="text-lg font-semibold text-gray-600">No Survey History Found</p>
+                                        <p className="text-gray-500 mt-1 text-sm">This user has not completed any surveys yet.</p>
+                                    </div>
+                                ) : (
+                                    <div className="space-y-4">
+                                        {userSurveyHistory.map((survey, index) => (
+                                            <div key={survey.session_id} className="bg-gradient-to-r from-gray-50 to-white rounded-lg shadow-md border border-gray-200 overflow-hidden">
+                                                {/* Survey Header - Compact */}
+                                                <div className="bg-gradient-to-r from-blue-100 to-purple-100 px-4 py-3 border-b border-gray-200">
+                                                    <div className="flex items-center justify-between">
+                                                        <div className="flex items-center">
+                                                            <div className="w-8 h-8 bg-gradient-to-r from-blue-500 to-purple-500 rounded-full flex items-center justify-center text-white font-bold mr-3 text-sm">
+                                                                {index + 1}
+                                                            </div>
+                                                            <div>
+                                                                <h3 className="text-sm font-bold text-gray-800">
+                                                                    {survey.questionnaire_title}
+                                                                </h3>
+                                                                <p className="text-xs text-gray-600">
+                                                                    Completed on {survey.completion_date} at {survey.completion_time}
+                                                                </p>
+                                                            </div>
+                                                        </div>
+                                                        <div className="flex items-center space-x-3">
+                                                            {/* Risk Level Badge - Smaller */}
+                                                            <span className={`px-2 py-1 text-xs font-bold rounded-full border shadow-sm ${
+                                                                survey.risk_level === 'CRITICAL' ? 'bg-red-100 text-red-800 border-red-200' :
+                                                                survey.risk_level === 'HIGH' ? 'bg-orange-100 text-orange-800 border-orange-200' :
+                                                                survey.risk_level === 'MID' ? 'bg-yellow-100 text-yellow-800 border-yellow-200' :
+                                                                'bg-green-100 text-green-800 border-green-200'
+                                                            }`}>
+                                                                {survey.risk_level}
+                                                            </span>
+                                                            
+                                                            {/* Mental State Display - Smaller */}
+                                                            {survey.mental_state && (
+                                                                <div className="flex items-center space-x-1 bg-white px-2 py-1 rounded-md border">
+                                                                    <span className="text-lg">{survey.mental_state.emoji}</span>
+                                                                    <div>
+                                                                        <div className="text-xs font-semibold text-gray-800">
+                                                                            {survey.mental_state.text_en}
+                                                                        </div>
+                                                                        <div className="text-xs text-gray-500">
+                                                                            {survey.mental_state.rating}/7
+                                                                        </div>
+                                                                    </div>
+                                                                </div>
+                                                            )}
+                                                        </div>
+                                                    </div>
+                                                </div>
+
+                                                {/* Survey Scores - Compact Layout */}
+                                                <div className="px-4 py-3 bg-gray-50/50">
+                                                    <h4 className="text-xs font-bold text-gray-700 mb-2 flex items-center">
+                                                        <i className="fas fa-chart-bar mr-1 text-blue-500 text-xs"></i>
+                                                        Survey Scores
+                                                    </h4>
+                                                    <div className="grid grid-cols-3 gap-2">
+                                                        <div className="bg-white p-2 rounded-md border shadow-sm">
+                                                            <div className="text-xs font-semibold text-blue-600 mb-1">NLP</div>
+                                                            <div className="text-sm font-bold text-blue-800">
+                                                                {survey.scores.nlp_score.toFixed(3)}
+                                                            </div>
+                                                        </div>
+                                                        <div className="bg-white p-2 rounded-md border shadow-sm">
+                                                            <div className="text-xs font-semibold text-purple-600 mb-1">Emotion</div>
+                                                            <div className="text-sm font-bold text-purple-800">
+                                                                {survey.scores.image_score.toFixed(3)}
+                                                            </div>
+                                                        </div>
+                                                        <div className="bg-white p-2 rounded-md border shadow-sm">
+                                                            <div className="text-xs font-semibold text-gray-600 mb-1">Combined</div>
+                                                            <div className="text-sm font-bold text-gray-800">
+                                                                {survey.scores.combined_score.toFixed(3)}
+                                                            </div>
+                                                        </div>
+                                                    </div>
+                                                </div>
+
+                                                {/* View Question Responses Button - Compact */}
+                                                {survey.question_count > 0 && (
+                                                    <div className="px-4 py-2 border-t border-gray-200">
+                                                        <button
+                                                            onClick={() => toggleQuestionResponses(survey.session_id)}
+                                                            disabled={loadingResponses.has(survey.session_id)}
+                                                            className="w-full bg-gradient-to-r from-blue-500 to-purple-500 hover:from-blue-600 hover:to-purple-600 text-white font-medium py-2 px-3 rounded-md transition-all duration-200 flex items-center justify-center disabled:opacity-50 disabled:cursor-not-allowed text-sm"
+                                                        >
+                                                            {loadingResponses.has(survey.session_id) ? (
+                                                                <>
+                                                                    <div className="animate-spin rounded-full h-3 w-3 border-b-2 border-white mr-2"></div>
+                                                                    Loading...
+                                                                </>
+                                                            ) : (
+                                                                <>
+                                                                    <i className={`fas ${expandedQuestionResponses.has(survey.session_id) ? 'fa-eye-slash' : 'fa-eye'} mr-2 text-xs`}></i>
+                                                                    {expandedQuestionResponses.has(survey.session_id) 
+                                                                        ? 'Hide Responses' 
+                                                                        : `View Responses (${survey.question_count})`
+                                                                    }
+                                                                </>
+                                                            )}
+                                                        </button>
+                                                    </div>
+                                                )}
+
+                                                {/* Question Responses - Compact */}
+                                                {expandedQuestionResponses.has(survey.session_id) && sessionResponses.has(survey.session_id) && (
+                                                    <div className="px-4 py-3 bg-blue-50/30">
+                                                        <div className="space-y-2">
+                                                            {sessionResponses.get(survey.session_id)?.map((response, qIndex) => (
+                                                                <div key={response.response_id} className="bg-white p-3 rounded-md border border-blue-200 shadow-sm">
+                                                                    <div className="mb-2">
+                                                                        <div className="flex items-start">
+                                                                            <div className="w-5 h-5 bg-blue-500 text-white rounded-full flex items-center justify-center text-xs font-bold mr-2 mt-0.5 flex-shrink-0">
+                                                                                {qIndex + 1}
+                                                                            </div>
+                                                                            <div className="flex-1 min-w-0">
+                                                                                <p className="text-xs font-semibold text-gray-800 mb-1">
+                                                                                    {response.question_text}
+                                                                                </p>
+                                                                                {response.question_text_hindi && (
+                                                                                    <p className="text-xs text-gray-500 italic mb-1">
+                                                                                        {response.question_text_hindi}
+                                                                                    </p>
+                                                                                )}
+                                                                            </div>
+                                                                        </div>
+                                                                    </div>
+                                                                    
+                                                                    <div className="bg-blue-50 p-2 rounded-md">
+                                                                        <p className="text-xs font-medium text-gray-800">
+                                                                            <i className="fas fa-comment mr-1 text-blue-500 text-xs"></i>
+                                                                            {response.answer_text}
+                                                                        </p>
+                                                                    </div>
+                                                                </div>
+                                                            ))}
+                                                        </div>
+                                                    </div>
+                                                )}
+                                            </div>
+                                        ))}
+                                    </div>
+                                )}
                             </div>
                         )}
                     </div>

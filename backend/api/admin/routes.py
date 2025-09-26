@@ -1369,3 +1369,220 @@ def get_all_soldiers():
     except Exception as e:
         logger.error(f"Error fetching soldiers: {e}")
         return jsonify({'error': str(e)}), 500
+
+
+@admin_bp.route('/user-survey-history/<string:force_id>', methods=['GET'])
+def get_user_survey_history(force_id):
+    """Get all survey history for a specific user"""
+    try:
+        conn = get_connection()
+        cursor = conn.cursor(dictionary=True)
+        
+        # Check if detailed responses should be included (optional query parameter)
+        include_responses = request.args.get('include_responses', 'false').lower() == 'true'
+        
+        # Get all survey sessions for this user, ordered by completion date (latest first)
+        cursor.execute("""
+            SELECT 
+                ws.session_id,
+                ws.questionnaire_id,
+                ws.start_timestamp,
+                ws.completion_timestamp,
+                ws.status,
+                ws.nlp_avg_score,
+                ws.image_avg_score,
+                ws.mental_state_score,
+                ws.combined_avg_score,
+                q.title as questionnaire_title,
+                q.description as questionnaire_description
+            FROM weekly_sessions ws
+            LEFT JOIN questionnaires q ON ws.questionnaire_id = q.questionnaire_id
+            WHERE ws.force_id = %s
+            AND ws.status = 'completed'
+            ORDER BY ws.completion_timestamp DESC
+        """, (force_id,))
+        
+        sessions = cursor.fetchall()
+        
+        # If no sessions found, return empty result
+        if not sessions:
+            return jsonify({
+                'force_id': force_id,
+                'surveys': [],
+                'total_count': 0,
+                'message': 'No survey history found for this user'
+            }), 200
+        
+        # Format the sessions data
+        survey_history = []
+        
+        for session in sessions:
+            session_data = {
+                'session_id': session['session_id'],
+                'questionnaire_id': session['questionnaire_id'],
+                'questionnaire_title': session['questionnaire_title'] or 'Unknown Questionnaire',
+                'questionnaire_description': session['questionnaire_description'],
+                'start_timestamp': session['start_timestamp'].isoformat() if session['start_timestamp'] else None,
+                'completion_timestamp': session['completion_timestamp'].isoformat() if session['completion_timestamp'] else None,
+                'completion_date': session['completion_timestamp'].strftime('%Y-%m-%d') if session['completion_timestamp'] else None,
+                'completion_time': session['completion_timestamp'].strftime('%H:%M') if session['completion_timestamp'] else None,
+                'status': session['status'],
+                'scores': {
+                    'nlp_score': round(session['nlp_avg_score'], 3) if session['nlp_avg_score'] else 0,
+                    'image_score': round(session['image_avg_score'], 3) if session['image_avg_score'] else 0,
+                    'combined_score': round(session['combined_avg_score'], 3) if session['combined_avg_score'] else 0,
+                    'mental_state_score': session['mental_state_score'] if session['mental_state_score'] else None
+                }
+            }
+            
+            # Calculate risk level based on combined score
+            combined_score = session['combined_avg_score'] or 0
+            from api.survey.routes import get_dynamic_risk_thresholds
+            risk_thresholds = get_dynamic_risk_thresholds()
+            
+            if combined_score >= risk_thresholds['CRITICAL']:
+                risk_level = 'CRITICAL'
+            elif combined_score >= risk_thresholds['HIGH']:
+                risk_level = 'HIGH'
+            elif combined_score >= risk_thresholds['MEDIUM']:
+                risk_level = 'MID'
+            else:
+                risk_level = 'LOW'
+            
+            session_data['risk_level'] = risk_level
+            
+            # Get mental state display data if available
+            mental_state_display = None
+            if session['mental_state_score']:
+                mental_state_options = [
+                    { 'value': 1, 'emoji': '😰', 'textEn': 'Very Low', 'textHi': 'बहुत उदास (Bahut Udaas)', 'color': '#dc2626' },
+                    { 'value': 2, 'emoji': '😟', 'textEn': 'Low', 'textHi': 'उदास (Udaas)', 'color': '#ea580c' },
+                    { 'value': 3, 'emoji': '😐', 'textEn': 'Neutral', 'textHi': 'सामान्य (Saamaanya)', 'color': '#d97706' },
+                    { 'value': 4, 'emoji': '🙂', 'textEn': 'Slightly Positive', 'textHi': 'थोड़े खुश (Thode Khush)', 'color': '#65a30d' },
+                    { 'value': 5, 'emoji': '😊', 'textEn': 'Positive', 'textHi': 'खुश (Khush)', 'color': '#16a34a' },
+                    { 'value': 6, 'emoji': '😁', 'textEn': 'Very Positive', 'textHi': 'बहुत खुश (Bahut Khush)', 'color': '#059669' },
+                    { 'value': 7, 'emoji': '🤩', 'textEn': 'Excellent', 'textHi': 'शानदार / बेहद खुश (Shandar / Behad Khush)', 'color': '#0d9488' }
+                ]
+                
+                for option in mental_state_options:
+                    if option['value'] == session['mental_state_score']:
+                        mental_state_display = {
+                            'rating': session['mental_state_score'],
+                            'emoji': option['emoji'],
+                            'text_en': option['textEn'],
+                            'text_hi': option['textHi'],
+                            'color': option['color']
+                        }
+                        break
+            
+            session_data['mental_state'] = mental_state_display
+            
+            # Get question count for this session
+            cursor.execute("""
+                SELECT COUNT(*) as question_count
+                FROM question_responses qr
+                WHERE qr.session_id = %s
+            """, (session['session_id'],))
+            
+            question_count_result = cursor.fetchone()
+            session_data['question_count'] = question_count_result['question_count'] if question_count_result else 0
+            
+            # Only include detailed question responses if specifically requested
+            session_data['question_responses'] = []
+            if include_responses and session_data['question_count'] > 0:
+                # Get question responses for this session
+                cursor.execute("""
+                    SELECT 
+                        qr.response_id,
+                        qr.question_id,
+                        qr.answer_text,
+                        qr.timestamp,
+                        q.question_text,
+                        q.question_text_hindi
+                    FROM question_responses qr
+                    LEFT JOIN questions q ON qr.question_id = q.question_id
+                    WHERE qr.session_id = %s
+                    ORDER BY qr.timestamp
+                """, (session['session_id'],))
+                
+                responses = cursor.fetchall()
+                
+                question_responses = []
+                for response in responses:
+                    question_responses.append({
+                        'response_id': response['response_id'],
+                        'question_id': response['question_id'],
+                        'question_text': response['question_text'],
+                        'question_text_hindi': response['question_text_hindi'],
+                        'answer_text': response['answer_text'],
+                        'timestamp': response['timestamp'].isoformat() if response['timestamp'] else None
+                    })
+                
+                session_data['question_responses'] = question_responses
+            
+            survey_history.append(session_data)
+        
+        return jsonify({
+            'force_id': force_id,
+            'surveys': survey_history,
+            'total_count': len(survey_history),
+            'message': f'Found {len(survey_history)} completed surveys for user {force_id}',
+            'include_responses': include_responses
+        }), 200
+        
+    except Exception as e:
+        logger.error(f"Error fetching user survey history: {e}")
+        return jsonify({'error': str(e)}), 500
+    finally:
+        cursor.close()
+        conn.close()
+
+
+@admin_bp.route('/survey-session-responses/<int:session_id>', methods=['GET'])
+def get_survey_session_responses(session_id):
+    """Get question responses for a specific survey session"""
+    try:
+        conn = get_connection()
+        cursor = conn.cursor(dictionary=True)
+        
+        # Get question responses for this session
+        cursor.execute("""
+            SELECT 
+                qr.response_id,
+                qr.question_id,
+                qr.answer_text,
+                qr.timestamp,
+                q.question_text,
+                q.question_text_hindi
+            FROM question_responses qr
+            LEFT JOIN questions q ON qr.question_id = q.question_id
+            WHERE qr.session_id = %s
+            ORDER BY qr.timestamp
+        """, (session_id,))
+        
+        responses = cursor.fetchall()
+        
+        question_responses = []
+        for response in responses:
+            question_responses.append({
+                'response_id': response['response_id'],
+                'question_id': response['question_id'],
+                'question_text': response['question_text'],
+                'question_text_hindi': response['question_text_hindi'],
+                'answer_text': response['answer_text'],
+                'timestamp': response['timestamp'].isoformat() if response['timestamp'] else None
+            })
+        
+        return jsonify({
+            'session_id': session_id,
+            'question_responses': question_responses,
+            'total_questions': len(question_responses),
+            'message': f'Found {len(question_responses)} question responses for session {session_id}'
+        }), 200
+        
+    except Exception as e:
+        logger.error(f"Error fetching survey session responses: {e}")
+        return jsonify({'error': str(e)}), 500
+    finally:
+        cursor.close()
+        conn.close()
