@@ -241,6 +241,30 @@ export const apiService = {
     getSurveySessionResponses: (session_id: number) =>
         api.get(`/admin/survey-session-responses/${session_id}`),
 
+    // Default Questions Management
+    getDefaultQuestionOptions: () =>
+        api.get('/admin/default-questions/options'),
+    
+    createDefaultQuestionOption: (data: { question_type: 'happy_state' | 'sad_state', option_text: string, option_text_hindi?: string }) =>
+        api.post('/admin/default-questions/options', data),
+    
+    updateDefaultQuestionOption: (option_id: number, data: { option_text: string, option_text_hindi?: string }) =>
+        api.put(`/admin/default-questions/options/${option_id}`, data),
+    
+    deleteDefaultQuestionOption: (option_id: number) =>
+        api.delete(`/admin/default-questions/options/${option_id}`),
+
+    // Survey Default Questions
+    getDefaultQuestions: () =>
+        api.get('/survey/default-questions'),
+    
+    submitDefaultQuestions: (data: { 
+        session_id: number, 
+        force_id: string, 
+        responses: Array<{ question_type: 'happy_state' | 'sad_state', selected_option_ids: number[] }> 
+    }) =>
+        api.post('/survey/default-questions/submit', data),
+
     translateAnswer
 };
 

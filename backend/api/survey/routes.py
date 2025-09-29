@@ -136,6 +136,126 @@ def get_mental_state_analysis(score):
 
 survey_bp = Blueprint('survey', __name__)
 
+@survey_bp.route('/default-questions', methods=['GET'])
+def get_default_questions():
+    """Get default questions options for happy/sad state questions"""
+    try:
+        conn = get_connection()
+        cursor = conn.cursor(dictionary=True)
+        
+        cursor.execute("""
+            SELECT option_id, question_type, option_text, option_text_hindi, display_order
+            FROM default_question_options 
+            WHERE is_active = TRUE
+            ORDER BY question_type, display_order
+        """)
+        
+        options = cursor.fetchall()
+        
+        # Group options by question type
+        happy_options = [opt for opt in options if opt['question_type'] == 'happy_state']
+        sad_options = [opt for opt in options if opt['question_type'] == 'sad_state']
+        
+        return jsonify({
+            "success": True,
+            "questions": [
+                {
+                    "type": "happy_state",
+                    "question_text": "What things result in your happy state?",
+                    "question_text_hindi": "कौन सी चीज़ें आपको खुश करती हैं?",
+                    "options": happy_options
+                },
+                {
+                    "type": "sad_state", 
+                    "question_text": "What things result in your sad state?",
+                    "question_text_hindi": "कौन सी चीज़ें आपको उदास करती हैं?",
+                    "options": sad_options
+                }
+            ]
+        }), 200
+        
+    except Exception as e:
+        logger.error(f"Error fetching default questions: {e}")
+        return jsonify({"error": str(e)}), 500
+    finally:
+        cursor.close()
+        conn.close()
+
+
+@survey_bp.route('/default-questions/submit', methods=['POST'])
+def submit_default_questions():
+    """Submit user responses to default questions"""
+    try:
+        data = request.json
+        session_id = data.get('session_id')
+        force_id = data.get('force_id')
+        responses = data.get('responses', [])
+        
+        if not session_id or not force_id:
+            return jsonify({"error": "session_id and force_id are required"}), 400
+            
+        if not responses or len(responses) != 2:
+            return jsonify({"error": "Both happy_state and sad_state responses are required"}), 400
+        
+        conn = get_connection()
+        cursor = conn.cursor()
+        
+        # Validate session exists
+        cursor.execute("SELECT session_id FROM weekly_sessions WHERE session_id = %s", (session_id,))
+        if not cursor.fetchone():
+            return jsonify({"error": "Invalid session_id"}), 400
+        
+        # Process each response
+        for response in responses:
+            question_type = response.get('question_type')
+            selected_option_ids = response.get('selected_option_ids', [])
+            
+            if question_type not in ['happy_state', 'sad_state']:
+                return jsonify({"error": f"Invalid question_type: {question_type}"}), 400
+                
+            if not selected_option_ids:
+                return jsonify({"error": f"At least one option must be selected for {question_type}"}), 400
+            
+            # Validate option IDs exist
+            placeholders = ','.join(['%s'] * len(selected_option_ids))
+            cursor.execute(f"""
+                SELECT COUNT(*) FROM default_question_options 
+                WHERE option_id IN ({placeholders}) AND question_type = %s AND is_active = TRUE
+            """, selected_option_ids + [question_type])
+            
+            valid_count = cursor.fetchone()[0]
+            if valid_count != len(selected_option_ids):
+                return jsonify({"error": f"Invalid option IDs for {question_type}"}), 400
+            
+            # Delete any existing response for this session and question type
+            cursor.execute("""
+                DELETE FROM user_default_responses 
+                WHERE session_id = %s AND question_type = %s
+            """, (session_id, question_type))
+            
+            # Insert new response
+            cursor.execute("""
+                INSERT INTO user_default_responses 
+                (session_id, force_id, question_type, selected_option_ids)
+                VALUES (%s, %s, %s, %s)
+            """, (session_id, force_id, question_type, str(selected_option_ids)))
+        
+        conn.commit()
+        
+        return jsonify({
+            "success": True,
+            "message": "Default questions responses saved successfully"
+        }), 200
+        
+    except Exception as e:
+        conn.rollback()
+        logger.error(f"Error submitting default questions: {e}")
+        return jsonify({"error": str(e)}), 500
+    finally:
+        cursor.close()
+        conn.close()
+
+
 @survey_bp.route('/survey-initialization', methods=['GET'])
 def get_survey_initialization_data():
     """Optimized endpoint to get all survey initialization data in a single request"""
@@ -378,11 +498,12 @@ def submit_survey():
 
         logger.info(f"Survey submission for authenticated soldier: {force_id}")
 
-        # Extract mental state data
-        mental_state_rating = data.get('mental_state_rating')
-        mental_state_emoji = data.get('mental_state_emoji')
-        mental_state_text_en = data.get('mental_state_text_en')
-        mental_state_text_hi = data.get('mental_state_text_hi')
+        # Extract mental state data (handle both nested and direct formats)
+        mental_state_data = data.get('mental_state_data', {})
+        mental_state_rating = mental_state_data.get('mental_state_rating') or data.get('mental_state_rating')
+        mental_state_emoji = mental_state_data.get('mental_state_emoji') or data.get('mental_state_emoji')
+        mental_state_text_en = mental_state_data.get('mental_state_text_en') or data.get('mental_state_text_en')
+        mental_state_text_hi = mental_state_data.get('mental_state_text_hi') or data.get('mental_state_text_hi')
 
         # Create a new weekly session
         cursor.execute("""

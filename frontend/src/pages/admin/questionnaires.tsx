@@ -44,6 +44,10 @@ const AdminQuestionnaires: React.FC = () => {
         navigate('/admin/create-questionnaire');
     };
 
+    const handleManageDefaultClick = () => {
+        navigate('/admin/manage-default-questions');
+    };
+
     const handleQuestionnaireClick = async (questionnaireId: number) => {
         setLoadingDetails(true);
         try {
@@ -168,12 +172,20 @@ const AdminQuestionnaires: React.FC = () => {
                                     <p className="text-gray-600 text-sm mt-1">Create and manage mental health assessment questionnaires</p>
                                 </div>
                             </div>
-                            <button
-                                className="bg-gradient-to-r from-blue-500 to-blue-600 hover:from-blue-600 hover:to-blue-700 text-white px-6 py-2.5 rounded-lg transition-all duration-200 font-medium shadow-md hover:shadow-lg transform hover:scale-[1.02] flex items-center text-sm"
-                                onClick={handleCreateClick}
-                            >
-                                <i className="fas fa-plus mr-2"></i> <span className="ml-1">Create Questionnaire</span>
-                            </button>
+                            <div className="flex gap-3">
+                                <button
+                                    className="bg-gradient-to-r from-purple-500 to-purple-600 hover:from-purple-600 hover:to-purple-700 text-white px-6 py-2.5 rounded-lg transition-all duration-200 font-medium shadow-md hover:shadow-lg transform hover:scale-[1.02] flex items-center text-sm"
+                                    onClick={handleManageDefaultClick}
+                                >
+                                    <i className="fas fa-cogs mr-2"></i> <span className="ml-1">Manage Default Questions</span>
+                                </button>
+                                <button
+                                    className="bg-gradient-to-r from-blue-500 to-blue-600 hover:from-blue-600 hover:to-blue-700 text-white px-6 py-2.5 rounded-lg transition-all duration-200 font-medium shadow-md hover:shadow-lg transform hover:scale-[1.02] flex items-center text-sm"
+                                    onClick={handleCreateClick}
+                                >
+                                    <i className="fas fa-plus mr-2"></i> <span className="ml-1">Create Questionnaire</span>
+                                </button>
+                            </div>
                         </div>
                     </div>
                     {/* Questionnaire List */}

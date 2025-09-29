@@ -195,3 +195,32 @@ CREATE TABLE IF NOT EXISTS notifications (
     INDEX idx_notifications_priority (priority),
     INDEX idx_notifications_created (created_at)
 );
+
+-- Default Question Options Table (for managing happy/sad state options)
+CREATE TABLE IF NOT EXISTS default_question_options (
+    option_id INT AUTO_INCREMENT PRIMARY KEY,
+    question_type ENUM('happy_state', 'sad_state') NOT NULL,
+    option_text VARCHAR(255) NOT NULL,
+    option_text_hindi VARCHAR(255),
+    display_order INT DEFAULT 0,
+    is_active BOOLEAN DEFAULT TRUE,
+    created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
+    updated_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP ON UPDATE CURRENT_TIMESTAMP,
+    INDEX idx_question_type (question_type),
+    INDEX idx_active_options (is_active, question_type)
+);
+
+-- User Default Question Responses Table (for storing user selections)
+CREATE TABLE IF NOT EXISTS user_default_responses (
+    response_id INT AUTO_INCREMENT PRIMARY KEY,
+    session_id INT NOT NULL,
+    force_id CHAR(9) NOT NULL,
+    question_type ENUM('happy_state', 'sad_state') NOT NULL,
+    selected_option_ids JSON NOT NULL, -- Store array of selected option IDs
+    timestamp TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
+    FOREIGN KEY (session_id) REFERENCES weekly_sessions(session_id) ON DELETE CASCADE,
+    FOREIGN KEY (force_id) REFERENCES users(force_id) ON DELETE CASCADE,
+    INDEX idx_session_responses (session_id),
+    INDEX idx_user_responses (force_id),
+    INDEX idx_question_type_responses (question_type)
+);

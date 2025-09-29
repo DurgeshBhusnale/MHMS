@@ -9,8 +9,10 @@ import AdminQuestionnaires from './pages/admin/questionnaires';
 import AdminSettings from './pages/admin/settings';
 import DailyEmotionPage from './pages/admin/daily-emotion';
 import FaceModelManagement from './pages/admin/face-model-management';
+import ManageDefaultQuestions from './pages/admin/manage-default-questions';
 import SoldierSurveyPage from './pages/soldier/survey';
 import SoldierLoginPage from './pages/soldier/login';
+import SurveyComplete from './pages/soldier/survey-complete';
 import ProtectedRoute from './components/ProtectedRoute';
 
 export const router = createBrowserRouter([
@@ -52,6 +54,14 @@ export const router = createBrowserRouter([
     element: (
       <ProtectedRoute requiredRole="admin">
         <AdminQuestionnaires />
+      </ProtectedRoute>
+    ),
+  },
+  {
+    path: '/admin/manage-default-questions',
+    element: (
+      <ProtectedRoute requiredRole="admin">
+        <ManageDefaultQuestions />
       </ProtectedRoute>
     ),
   },
@@ -111,5 +121,9 @@ export const router = createBrowserRouter([
   {
     path: '/soldier/survey',
     element: <SoldierSurveyPage />,
+  },
+  {
+    path: '/soldier/survey-complete',
+    element: <SurveyComplete />,
   },
 ]);

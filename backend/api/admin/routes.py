@@ -336,6 +336,195 @@ def delete_questionnaire(questionnaire_id):
         db.close()
 
 
+# Default Questions Management Routes
+@admin_bp.route('/default-questions/options', methods=['GET'])
+def get_default_question_options():
+    """Get all options for happy/sad state questions"""
+    try:
+        db = get_connection()
+        cursor = db.cursor(dictionary=True)
+        
+        cursor.execute("""
+            SELECT option_id, question_type, option_text, option_text_hindi, 
+                   display_order, is_active, created_at
+            FROM default_question_options 
+            WHERE is_active = TRUE
+            ORDER BY question_type, display_order
+        """)
+        
+        options = cursor.fetchall()
+        
+        # Group options by question type
+        happy_options = [opt for opt in options if opt['question_type'] == 'happy_state']
+        sad_options = [opt for opt in options if opt['question_type'] == 'sad_state']
+        
+        return jsonify({
+            "success": True,
+            "happy_state_options": happy_options,
+            "sad_state_options": sad_options
+        }), 200
+        
+    except Exception as e:
+        logger.error(f"Error fetching default question options: {e}")
+        return jsonify({"error": str(e)}), 500
+    finally:
+        cursor.close()
+        db.close()
+
+
+@admin_bp.route('/default-questions/options', methods=['POST'])
+def create_default_question_option():
+    """Create a new option for happy/sad state questions"""
+    try:
+        data = request.json
+        question_type = data.get('question_type')
+        option_text = data.get('option_text', '').strip()
+        option_text_hindi = data.get('option_text_hindi', '').strip()
+        
+        if not question_type or question_type not in ['happy_state', 'sad_state']:
+            return jsonify({"error": "Invalid question_type. Must be 'happy_state' or 'sad_state'"}), 400
+            
+        if not option_text:
+            return jsonify({"error": "option_text is required"}), 400
+        
+        db = get_connection()
+        cursor = db.cursor()
+        
+        # Get next display order
+        cursor.execute("""
+            SELECT COALESCE(MAX(display_order), 0) + 1 as next_order 
+            FROM default_question_options 
+            WHERE question_type = %s AND is_active = TRUE
+        """, (question_type,))
+        
+        next_order = cursor.fetchone()[0]
+        
+        # If no Hindi translation provided, try to translate
+        if not option_text_hindi:
+            try:
+                option_text_hindi = translate_to_hindi(option_text)
+            except Exception as e:
+                logger.warning(f"Translation failed for '{option_text}': {e}")
+                option_text_hindi = option_text  # Fallback to English
+        
+        # Insert new option
+        cursor.execute("""
+            INSERT INTO default_question_options 
+            (question_type, option_text, option_text_hindi, display_order)
+            VALUES (%s, %s, %s, %s)
+        """, (question_type, option_text, option_text_hindi, next_order))
+        
+        option_id = cursor.lastrowid
+        db.commit()
+        
+        return jsonify({
+            "success": True,
+            "message": "Option created successfully",
+            "option_id": option_id
+        }), 201
+        
+    except Exception as e:
+        db.rollback()
+        logger.error(f"Error creating default question option: {e}")
+        return jsonify({"error": str(e)}), 500
+    finally:
+        cursor.close()
+        db.close()
+
+
+@admin_bp.route('/default-questions/options/<int:option_id>', methods=['DELETE'])
+def delete_default_question_option(option_id):
+    """Delete a default question option"""
+    try:
+        db = get_connection()
+        cursor = db.cursor()
+        
+        # Check if option exists
+        cursor.execute("""
+            SELECT option_id FROM default_question_options 
+            WHERE option_id = %s AND is_active = TRUE
+        """, (option_id,))
+        
+        if not cursor.fetchone():
+            return jsonify({"error": "Option not found"}), 404
+        
+        # Soft delete by setting is_active = FALSE
+        cursor.execute("""
+            UPDATE default_question_options 
+            SET is_active = FALSE 
+            WHERE option_id = %s
+        """, (option_id,))
+        
+        db.commit()
+        
+        return jsonify({
+            "success": True,
+            "message": "Option deleted successfully"
+        }), 200
+        
+    except Exception as e:
+        db.rollback()
+        logger.error(f"Error deleting default question option: {e}")
+        return jsonify({"error": str(e)}), 500
+    finally:
+        cursor.close()
+        db.close()
+
+
+@admin_bp.route('/default-questions/options/<int:option_id>', methods=['PUT'])
+def update_default_question_option(option_id):
+    """Update a default question option"""
+    try:
+        data = request.json
+        option_text = data.get('option_text', '').strip()
+        option_text_hindi = data.get('option_text_hindi', '').strip()
+        
+        if not option_text:
+            return jsonify({"error": "option_text is required"}), 400
+        
+        db = get_connection()
+        cursor = db.cursor()
+        
+        # Check if option exists
+        cursor.execute("""
+            SELECT option_id FROM default_question_options 
+            WHERE option_id = %s AND is_active = TRUE
+        """, (option_id,))
+        
+        if not cursor.fetchone():
+            return jsonify({"error": "Option not found"}), 404
+        
+        # If no Hindi translation provided, try to translate
+        if not option_text_hindi:
+            try:
+                option_text_hindi = translate_to_hindi(option_text)
+            except Exception as e:
+                logger.warning(f"Translation failed for '{option_text}': {e}")
+                option_text_hindi = option_text  # Fallback to English
+        
+        # Update option
+        cursor.execute("""
+            UPDATE default_question_options 
+            SET option_text = %s, option_text_hindi = %s, updated_at = CURRENT_TIMESTAMP
+            WHERE option_id = %s
+        """, (option_text, option_text_hindi, option_id))
+        
+        db.commit()
+        
+        return jsonify({
+            "success": True,
+            "message": "Option updated successfully"
+        }), 200
+        
+    except Exception as e:
+        db.rollback()
+        logger.error(f"Error updating default question option: {e}")
+        return jsonify({"error": str(e)}), 500
+    finally:
+        cursor.close()
+        db.close()
+
+
 # Add soldier endpoint for admin
 @admin_bp.route('/add-soldier', methods=['POST'])
 def add_soldier():
