@@ -27,15 +27,12 @@ const SoldierLoginPage: React.FC = () => {
                 return;
             }
 
-            // AUTHENTICATION AT LOGIN: Verify soldier credentials immediately
-            console.log('Authenticating soldier credentials...');
-            const authResponse = await apiService.verifySoldier(soldierId, soldierPassword);
-            
-            if (authResponse.verified) {
-                console.log('Soldier authentication successful:', authResponse);
-                
-                // Navigate to survey with authenticated credentials
-                navigate('/soldier/survey', {
+            // Perform server-side login to set session cookies for soldier
+            console.log('Logging in soldier (server session)...');
+            const res = await apiService.loginSoldier(soldierId, soldierPassword);
+
+            if (res?.user?.role === 'soldier') {
+                navigate('/soldier/dashboard', {
                     state: { 
                         force_id: soldierId, 
                         password: soldierPassword,
@@ -44,7 +41,7 @@ const SoldierLoginPage: React.FC = () => {
                     }
                 });
             } else {
-                setSoldierError('Invalid soldier credentials. Please check your Force ID and password.');
+                setSoldierError('Access denied. Soldier role required.');
             }
             
         } catch (err: any) {
@@ -82,7 +79,7 @@ const SoldierLoginPage: React.FC = () => {
                         <h1 className="text-xl font-bold bg-gradient-to-r from-orange-600 via-blue-600 to-green-600 bg-clip-text text-transparent mb-1">
                             CRPF User Portal
                         </h1>
-                        <p className="text-gray-600 text-xs">Enter your Force ID and password to access the mental health survey</p>
+                        <p className="text-gray-600 text-xs">Enter your Force ID and password to access your dashboard</p>
                     </div>
 
                     {/* Error Alert */}
@@ -137,8 +134,8 @@ const SoldierLoginPage: React.FC = () => {
                                 </span>
                             ) : (
                                 <span className="flex items-center justify-center">
-                                    <i className="fas fa-clipboard-list mr-2"></i>
-                                    Start Mental Health Survey
+                                    <i className="fas fa-tachometer-alt mr-2"></i>
+                                    Access Dashboard
                                 </span>
                             )}
                         </button>

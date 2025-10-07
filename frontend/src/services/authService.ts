@@ -54,6 +54,23 @@ class AuthService {
         }
     }
 
+    async loginSoldier(forceId: string, password: string): Promise<LoginResponse> {
+        try {
+            const response = await axios.post<LoginResponse>(`${this.baseUrl}/login-soldier`, {
+                force_id: forceId,
+                password: password
+            });
+            this.startSessionMonitoring();
+            return response.data;
+        } catch (error: any) {
+            console.error('Soldier login error:', error.response || error);
+            if (error.response?.data?.error) {
+                throw new Error(error.response.data.error);
+            }
+            throw new Error('Login failed. Please try again.');
+        }
+    }
+
     async logout(): Promise<void> {
         try {
             await axios.post(`${this.baseUrl}/logout`);

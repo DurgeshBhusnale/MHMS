@@ -71,6 +71,25 @@ class Settings:
     TRANSLATION_API_KEY = os.getenv('TRANSLATION_API_KEY', '')
     DEFAULT_LANGUAGE = os.getenv('DEFAULT_LANGUAGE', 'en')
     SUPPORTED_LANGUAGES = os.getenv('SUPPORTED_LANGUAGES', 'en,hi').split(',')
+
+    # Offline NLP/Chatbot Models (local folders under backend/models by default)
+    # These are used to avoid any external API keys and run fully offline.
+    MODELS_BASE_DIR = os.getenv('MODELS_BASE_DIR', str(backend_dir / 'models'))
+    # Conversational model (e.g., DialoGPT-small)
+    CHATBOT_MODEL_DIR = os.getenv(
+        'CHATBOT_MODEL_DIR',
+        str(Path(MODELS_BASE_DIR) / 'DialoGPT-medium')
+    )
+    # Emotion classifier (e.g., emotion-english-distilroberta-base)
+    EMOTION_MODEL_DIR = os.getenv(
+        'EMOTION_MODEL_DIR',
+        str(Path(MODELS_BASE_DIR) / 'emotion-english-distilroberta-base')
+    )
+    # Sentiment classifier (e.g., bert-base-multilingual-uncased-sentiment)
+    SENTIMENT_MODEL_DIR = os.getenv(
+        'SENTIMENT_MODEL_DIR',
+        str(Path(MODELS_BASE_DIR) / 'bert-base-multilingual-uncased-sentiment')
+    )
     
     @classmethod
     def get_risk_level(cls, score):

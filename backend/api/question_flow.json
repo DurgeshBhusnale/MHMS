@@ -1,0 +1,170 @@
+{
+  "nodes": {
+    "greeting": {
+      "id": "greeting",
+      "questions": [
+        "Hello! I'm here to listen and support you. How are you feeling today?",
+        "Hi there! I'm glad you're here. What's on your mind today?",
+        "Welcome! I'm here to help you through whatever you're experiencing. How can I support you?"
+      ],
+      "keywords": ["hello", "hi", "start", "begin"],
+      "next_nodes": ["mood_check", "general_wellbeing"]
+    },
+    "mood_check": {
+      "id": "mood_check",
+      "questions": [
+        "I understand you're going through something difficult. Can you tell me more about how you've been feeling lately?",
+        "It sounds like things have been challenging. How long have you been feeling this way?",
+        "I hear you. Would you like to talk about what's been affecting your mood recently?"
+      ],
+      "keywords": ["sad", "depressed", "down", "low", "unhappy", "miserable"],
+      "next_nodes": ["depression_check", "anxiety_check", "support_resources"]
+    },
+    "depression_check": {
+      "id": "depression_check",
+      "questions": [
+        "You seem to be going through a really tough time. Have you been feeling like this for several days or weeks?",
+        "I'm concerned about you. Have you noticed changes in your sleep, appetite, or energy levels?",
+        "It takes courage to share these feelings. Have you been having thoughts of hopelessness or feeling worthless?"
+      ],
+      "keywords": ["hopeless", "worthless", "suicide", "death", "give up", "pointless"],
+      "next_nodes": ["crisis_support", "professional_help", "coping_strategies"]
+    },
+    "anxiety_check": {
+      "id": "anxiety_check", 
+      "questions": [
+        "I can sense you're feeling anxious. Are you experiencing worry or fear about specific things?",
+        "Anxiety can be overwhelming. Have you noticed physical symptoms like rapid heartbeat or difficulty breathing?",
+        "It's understandable to feel anxious. What situations or thoughts tend to trigger these feelings for you?"
+      ],
+      "keywords": ["anxious", "worried", "nervous", "panic", "scared", "fear", "stress"],
+      "next_nodes": ["coping_strategies", "breathing_exercises", "professional_help"]
+    },
+    "general_wellbeing": {
+      "id": "general_wellbeing",
+      "questions": [
+        "I'm glad you're taking time to check in with yourself. What aspects of your life are going well right now?",
+        "It's great that you're being mindful of your mental health. How have you been taking care of yourself lately?",
+        "Self-awareness is so important. Are there any areas where you'd like more support or guidance?"
+      ],
+      "keywords": ["good", "fine", "okay", "better", "happy", "positive"],
+      "next_nodes": ["self_care", "goal_setting", "gratitude_practice"]
+    },
+    "crisis_support": {
+      "id": "crisis_support",
+      "questions": [
+        "I'm really concerned about you and want to make sure you're safe. Please know that these feelings can change and there is help available.",
+        "Your life has value and meaning. If you're having thoughts of hurting yourself, please reach out to a crisis helpline or emergency services immediately.",
+        "You don't have to go through this alone. There are people who care and want to help you through this difficult time."
+      ],
+      "keywords": ["crisis", "emergency", "help", "suicide"],
+      "next_nodes": ["professional_help", "emergency_contacts"]
+    },
+    "professional_help": {
+      "id": "professional_help",
+      "questions": [
+        "Have you considered speaking with a mental health professional? They can provide specialized support and treatment options.",
+        "Sometimes professional guidance can make a real difference. Would you be open to exploring counseling or therapy options?",
+        "Mental health professionals are trained to help with exactly what you're experiencing. Would you like information about how to find support?"
+      ],
+      "keywords": ["therapist", "counselor", "professional", "doctor", "help"],
+      "next_nodes": ["coping_strategies", "support_resources"]
+    },
+    "coping_strategies": {
+      "id": "coping_strategies",
+      "questions": [
+        "Let's focus on some strategies that might help you feel better. What activities usually help you relax or feel more positive?",
+        "Coping strategies can be very personal. Have you tried techniques like deep breathing, journaling, or gentle exercise?",
+        "Building healthy coping skills takes time. What would you like to try first - maybe some grounding techniques or mindfulness exercises?"
+      ],
+      "keywords": ["cope", "manage", "handle", "deal", "strategies"],
+      "next_nodes": ["breathing_exercises", "self_care", "gratitude_practice"]
+    },
+    "breathing_exercises": {
+      "id": "breathing_exercises",
+      "questions": [
+        "Let's try a simple breathing exercise together. Take a slow, deep breath in for 4 counts, hold for 4, then exhale for 6. How does that feel?",
+        "Focused breathing can help calm your nervous system. Would you like to practice a few minutes of mindful breathing?",
+        "Sometimes when we're anxious, our breathing becomes shallow. Let's focus on taking some deeper, slower breaths together."
+      ],
+      "keywords": ["breathe", "breathing", "calm", "relax"],
+      "next_nodes": ["self_care", "mood_check", "general_wellbeing"]
+    },
+    "self_care": {
+      "id": "self_care",
+      "questions": [
+        "Self-care is so important for mental health. What are some small things you can do today to nurture yourself?",
+        "Taking care of yourself isn't selfish - it's necessary. How can you be kind to yourself right now?",
+        "Even small acts of self-care can make a difference. What brings you comfort or joy, even in small ways?"
+      ],
+      "keywords": ["self-care", "care", "nurture", "kind"],
+      "next_nodes": ["gratitude_practice", "goal_setting", "general_wellbeing"]
+    },
+    "gratitude_practice": {
+      "id": "gratitude_practice",
+      "questions": [
+        "Sometimes focusing on gratitude can help shift our perspective. Can you think of one small thing you're grateful for today?",
+        "Gratitude practice doesn't have to be big things. What's one simple moment or experience that brought you even a tiny bit of joy recently?",
+        "Even during difficult times, there might be small things to appreciate. What's something that went okay for you today?"
+      ],
+      "keywords": ["grateful", "thankful", "appreciate", "positive"],
+      "next_nodes": ["self_care", "general_wellbeing", "goal_setting"]
+    },
+    "goal_setting": {
+      "id": "goal_setting",
+      "questions": [
+        "Setting small, achievable goals can help build momentum. What's one small thing you'd like to accomplish today or this week?",
+        "Progress happens one step at a time. What would feel like a meaningful but manageable goal for you right now?",
+        "Sometimes having something to work toward helps. What's one positive change you'd like to make, however small?"
+      ],
+      "keywords": ["goal", "accomplish", "achieve", "progress"],
+      "next_nodes": ["self_care", "coping_strategies", "general_wellbeing"]
+    },
+    "support_resources": {
+      "id": "support_resources",
+      "questions": [
+        "Remember that you don't have to face this alone. Do you have friends, family, or other support people you can reach out to?",
+        "Building a support network is important. Are there people in your life who you feel comfortable talking to about how you're feeling?",
+        "Professional resources are available too. Would you like information about mental health services or support groups?"
+      ],
+      "keywords": ["support", "help", "resources", "alone"],
+      "next_nodes": ["professional_help", "self_care", "general_wellbeing"]
+    },
+    "emergency_contacts": {
+      "id": "emergency_contacts",
+      "questions": [
+        "If you're in immediate danger, please call emergency services (911). For mental health crises, consider calling a suicide prevention hotline.",
+        "Crisis Text Line: Text HOME to 741741. National Suicide Prevention Lifeline: 988. You can also reach out to local emergency services.",
+        "Please reach out for immediate help if you need it. Emergency services, crisis hotlines, and mental health professionals are there for you."
+      ],
+      "keywords": ["emergency", "crisis", "911", "hotline"],
+      "next_nodes": ["professional_help", "support_resources"]
+    }
+  },
+  "default_responses": {
+    "empathy": [
+      "I hear you, and I want you to know that your feelings are valid.",
+      "Thank you for sharing that with me. It takes courage to open up.",
+      "I can sense that this is difficult for you. You're not alone in feeling this way.",
+      "Your feelings matter, and I'm here to listen without judgment."
+    ],
+    "encouragement": [
+      "You're taking a positive step by talking about this.",
+      "It's okay to not be okay. Healing is a process.",
+      "You're stronger than you know, even when you don't feel it.",
+      "Small steps forward are still progress."
+    ],
+    "transition": [
+      "Let's explore this a bit more.",
+      "I'd like to understand better.",
+      "Can you tell me more about that?",
+      "That's important information."
+    ]
+  },
+  "mood_keywords": {
+    "depression": ["sad", "depressed", "down", "low", "hopeless", "empty", "worthless", "pointless"],
+    "anxiety": ["anxious", "worried", "nervous", "panic", "scared", "fear", "stress", "overwhelmed"],
+    "positive": ["good", "fine", "okay", "better", "happy", "positive", "grateful", "thankful"],
+    "crisis": ["suicide", "kill", "death", "die", "hurt myself", "end it all", "give up", "no point"]
+  }
+}

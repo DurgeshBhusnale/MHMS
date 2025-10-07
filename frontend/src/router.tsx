@@ -12,8 +12,10 @@ import FaceModelManagement from './pages/admin/face-model-management';
 import ManageDefaultQuestions from './pages/admin/manage-default-questions';
 import SoldierSurveyPage from './pages/soldier/survey';
 import SoldierLoginPage from './pages/soldier/login';
+import SoldierDashboard from './pages/soldier/dashboard';
 import SurveyComplete from './pages/soldier/survey-complete';
 import ProtectedRoute from './components/ProtectedRoute';
+import Chat from './pages/Chat';
 
 export const router = createBrowserRouter([
   {
@@ -27,6 +29,10 @@ export const router = createBrowserRouter([
   {
     path: '/',
     element: <LandingPage />,
+  },
+  {
+    path: '/chat',
+    element: <Chat />,
   },
   {
     path: '/login',
@@ -117,6 +123,10 @@ export const router = createBrowserRouter([
   {
     path: '/soldier/login',
     element: <SoldierLoginPage />,
+  },
+  {
+    path: '/soldier/dashboard',
+    element: <SoldierDashboard />,
   },
   {
     path: '/soldier/survey',

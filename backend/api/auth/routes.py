@@ -62,6 +62,44 @@ def login():
             'error': str(e)
         }), 500
 
+@auth_bp.route('/login-soldier', methods=['POST'])
+def login_soldier():
+    """Handle soldier login and set session for authenticated chat access"""
+    data = request.get_json()
+    if not data or 'force_id' not in data or 'password' not in data:
+        return jsonify({'error': 'Missing required fields: force_id and password'}), 400
+
+    force_id = data['force_id']
+    password = data['password']
+
+    if not force_id.isdigit() or len(force_id) != 9:
+        return jsonify({'error': 'Invalid force ID format. Must be 9 digits.'}), 400
+
+    try:
+        user = auth_service.verify_login(force_id, password)
+        if user and user['role'] == 'soldier':
+            session_timeout = get_dynamic_session_timeout()
+            session['user_id'] = user['force_id']
+            session['role'] = user['role']
+            session['login_time'] = datetime.now().isoformat()
+            session['expires_at'] = (datetime.now() + timedelta(seconds=session_timeout)).isoformat()
+            session.permanent = True
+
+            return jsonify({
+                'message': 'Soldier login successful',
+                'user': {
+                    'force_id': user['force_id'],
+                    'role': user['role']
+                },
+                'session_timeout': session_timeout
+            }), 200
+        elif user and user['role'] != 'soldier':
+            return jsonify({'error': 'Access denied. This endpoint is for soldiers.'}), 403
+        else:
+            return jsonify({'error': 'Invalid credentials'}), 401
+    except Exception as e:
+        return jsonify({'error': str(e)}), 500
+
 @auth_bp.route('/logout', methods=['POST'])
 def logout():
     """Handle logout and clear session"""

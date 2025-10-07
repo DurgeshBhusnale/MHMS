@@ -64,6 +64,16 @@ const LandingPage = () => (
               User Login
             </span>
           </Link>
+
+          <Link 
+            to="/chat" 
+            className="px-8 py-4 bg-gradient-to-r from-gray-900 to-black hover:from-black hover:to-gray-900 text-white rounded-xl shadow-lg hover:shadow-xl transition-all duration-200 font-semibold text-lg transform hover:scale-[1.02]"
+          >
+            <span className="flex items-center justify-center">
+              <i className="fas fa-comments mr-3 text-xl"></i>
+              Try SATHI Chat
+            </span>
+          </Link>
         </div>
       </div>
     </section>

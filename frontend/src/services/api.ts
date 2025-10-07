@@ -24,6 +24,7 @@ const api = axios.create({
     headers: {
         'Content-Type': 'application/json',
     },
+    withCredentials: true,
 });
 
 // Add request interceptor to include authentication
@@ -72,9 +73,16 @@ export interface QuestionData {
 }
 
 export const apiService = {
+    // AI Chat endpoints (empathetic mental health chatbot)
+    getChatHealth: () => api.get('/ai-chat/health'),
+    getChatHistory: (session_id: string) => api.get(`/ai-chat/sessions/${session_id}/context`),
+    sendChatMessage: (session_id: string, message: string) => api.post('/ai-chat/message', { session_id, message }),
+
     // Authentication
     login: (force_id: string, password: string) => 
         authService.login(force_id, password),
+    loginSoldier: (force_id: string, password: string) =>
+        authService.loginSoldier(force_id, password),
 
     // Soldier credential verification (for questionnaires)
     verifySoldier: (force_id: string, password: string) =>

@@ -224,3 +224,14 @@ CREATE TABLE IF NOT EXISTS user_default_responses (
     INDEX idx_user_responses (force_id),
     INDEX idx_question_type_responses (question_type)
 );
+
+CREATE TABLE IF NOT EXISTS chat_logs (
+  id INTEGER PRIMARY KEY AUTOINCREMENT,
+  session_id TEXT,
+  role TEXT,
+  message TEXT,
+  emotion TEXT,
+  sentiment TEXT,
+  timestamp TEXT
+);
+-- Indexes for performance optimization

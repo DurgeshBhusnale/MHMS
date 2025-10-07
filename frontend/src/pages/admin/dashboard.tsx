@@ -314,6 +314,15 @@ const AdminDashboard: React.FC = () => {
                                 <p className="text-gray-600 text-sm mt-1">Mental Health Monitoring Overview</p>
                             </div>
                             <div className="flex items-center space-x-3">
+                                {/* AI Assistant Shortcut */}
+                                <a
+                                    href="/chat"
+                                    className="px-4 py-2 bg-gradient-to-r from-purple-600 to-indigo-600 hover:from-purple-700 hover:to-indigo-700 text-white rounded-lg flex items-center shadow-md hover:shadow-lg transform hover:scale-[1.02] transition-all duration-200 font-medium text-sm"
+                                    title="Open AI Assistant"
+                                >
+                                    <i className="fas fa-robot mr-2"></i>
+                                    AI Assistant
+                                </a>
                                 {/* Timeframe Selector */}
                                 <select
                                     value={timeframe}
