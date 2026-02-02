@@ -3,6 +3,7 @@ from services.auth_service import AuthService
 from datetime import datetime, timedelta
 from config.settings import settings
 from utils.session_utils import get_dynamic_session_timeout
+from utils.auth_decorators import require_admin
 
 auth_bp = Blueprint('auth', __name__)
 auth_service = AuthService()
@@ -105,8 +106,9 @@ def session_status():
         }), 401
 
 @auth_bp.route('/register', methods=['POST'])
+@require_admin
 def register():
-    """Handle registration for new soldiers"""
+    """Handle registration for new soldiers - Admin only"""
     data = request.get_json()
     
     if not data or 'force_id' not in data or 'password' not in data:

@@ -3,6 +3,7 @@ from flask import Blueprint, request, jsonify, send_file
 from db.connection import get_connection
 from services.translation_service import translate_to_hindi, translate_to_english
 from services.model_preloader_service import ModelPreloaderService
+from utils.auth_decorators import require_admin
 from fpdf import FPDF
 import logging
 from datetime import datetime
@@ -15,6 +16,7 @@ admin_bp = Blueprint('admin', __name__)
 
 # PHASE 2 OPTIMIZATION: Model preloader status endpoint
 @admin_bp.route('/model-preloader-status', methods=['GET'])
+@require_admin
 def get_model_preloader_status():
     """Get current status of model preloader service"""
     try:
@@ -28,6 +30,7 @@ def get_model_preloader_status():
 
 # Translation endpoint for question (English to Hindi)
 @admin_bp.route('/translate-question', methods=['POST'])
+@require_admin
 def translate_question():
     try:
         data = request.json
@@ -95,6 +98,7 @@ def translate_question():
 
 # Translation endpoint for answer (Hindi to English)
 @admin_bp.route('/translate-answer', methods=['POST'])
+@require_admin
 def translate_answer():
     try:
         data = request.json
@@ -109,6 +113,7 @@ def translate_answer():
 
 
 @admin_bp.route('/create-questionnaire', methods=['POST'])
+@require_admin
 def create_questionnaire():
     db = get_connection()
     cursor = db.cursor()
@@ -147,6 +152,7 @@ def create_questionnaire():
 
 
 @admin_bp.route('/questionnaires', methods=['GET'])
+@require_admin
 def get_questionnaires():
     db = get_connection()
     cursor = db.cursor()
@@ -180,6 +186,7 @@ def get_questionnaires():
 
 
 @admin_bp.route('/questionnaires/<int:questionnaire_id>', methods=['GET'])
+@require_admin
 def get_questionnaire_details(questionnaire_id):
     """Get detailed information about a specific questionnaire including its questions"""
     db = get_connection()
@@ -238,6 +245,7 @@ def get_questionnaire_details(questionnaire_id):
 
 
 @admin_bp.route('/questionnaires/<int:questionnaire_id>', methods=['DELETE'])
+@require_admin
 def delete_questionnaire(questionnaire_id):
     """Delete a questionnaire and all its associated data"""
     db = get_connection()
@@ -290,18 +298,18 @@ def delete_questionnaire(questionnaire_id):
             session_ids = [row[0] for row in cursor.fetchall()]
             
             if session_ids:
-                # Delete mental state responses
-                session_ids_str = ','.join(map(str, session_ids))
+                # Delete mental state responses (using parameterized query for security)
+                placeholders = ','.join(['%s'] * len(session_ids))
                 cursor.execute(f"""
-                    DELETE FROM mental_state_responses 
-                    WHERE session_id IN ({session_ids_str})
-                """)
-                
-                # Delete question responses
+                    DELETE FROM mental_state_responses
+                    WHERE session_id IN ({placeholders})
+                """, tuple(session_ids))
+
+                # Delete question responses (using parameterized query for security)
                 cursor.execute(f"""
-                    DELETE FROM question_responses 
-                    WHERE session_id IN ({session_ids_str})
-                """)
+                    DELETE FROM question_responses
+                    WHERE session_id IN ({placeholders})
+                """, tuple(session_ids))
                 
                 # Delete weekly sessions
                 cursor.execute("""
@@ -338,6 +346,7 @@ def delete_questionnaire(questionnaire_id):
 
 # Default Questions Management Routes
 @admin_bp.route('/default-questions/options', methods=['GET'])
+@require_admin
 def get_default_question_options():
     """Get all options for happy/sad state questions"""
     try:
@@ -373,6 +382,7 @@ def get_default_question_options():
 
 
 @admin_bp.route('/default-questions/options', methods=['POST'])
+@require_admin
 def create_default_question_option():
     """Create a new option for happy/sad state questions"""
     try:
@@ -433,6 +443,7 @@ def create_default_question_option():
 
 
 @admin_bp.route('/default-questions/options/<int:option_id>', methods=['DELETE'])
+@require_admin
 def delete_default_question_option(option_id):
     """Delete a default question option"""
     try:
@@ -472,6 +483,7 @@ def delete_default_question_option(option_id):
 
 
 @admin_bp.route('/default-questions/options/<int:option_id>', methods=['PUT'])
+@require_admin
 def update_default_question_option(option_id):
     """Update a default question option"""
     try:
@@ -527,6 +539,7 @@ def update_default_question_option(option_id):
 
 # Add soldier endpoint for admin
 @admin_bp.route('/add-soldier', methods=['POST'])
+@require_admin
 def add_soldier():
     import bcrypt
     data = request.get_json()
@@ -552,6 +565,7 @@ def add_soldier():
         db.close()
 
 @admin_bp.route('/create-question', methods=['POST'])
+@require_admin
 def create_question():
     db = get_connection()
     cursor = db.cursor()
@@ -628,6 +642,7 @@ def get_mental_state_analysis(score):
 
 
 @admin_bp.route('/add-question', methods=['POST'])
+@require_admin
 def add_question():
     db = get_connection()
     cursor = db.cursor()
@@ -668,6 +683,7 @@ def add_question():
 
 
 @admin_bp.route('/soldiers-report', methods=['GET'])
+@require_admin
 def get_soldiers_report():
     """Get real soldiers report data from database with filtering and pagination"""
     db = get_connection()
@@ -834,6 +850,7 @@ def get_soldiers_report():
 
 
 @admin_bp.route('/dashboard-stats', methods=['GET'])
+@require_admin
 def get_dashboard_stats():
     """Get real dashboard statistics from database"""
     db = get_connection()
@@ -1060,6 +1077,7 @@ def get_dashboard_stats():
 
 
 @admin_bp.route('/search-soldiers', methods=['POST'])
+@require_admin
 def search_soldiers():
     """Advanced search functionality for soldiers"""
     db = get_connection()
@@ -1242,6 +1260,7 @@ def search_soldiers():
 
 
 @admin_bp.route('/download-soldiers-pdf', methods=['POST'])
+@require_admin
 def download_soldiers_pdf():
     """Generate and download PDF report from provided soldiers data (no DB access)"""
     try:
@@ -1460,6 +1479,7 @@ def download_soldiers_pdf():
 
 
 @admin_bp.route('/download-soldiers-csv', methods=['POST'])
+@require_admin
 def download_soldiers_csv():
     """Generate and download CSV report from provided soldiers data (no DB access)"""
     try:
@@ -1523,6 +1543,7 @@ def download_soldiers_csv():
 # ============================================================================
 
 @admin_bp.route('/soldiers', methods=['GET'])
+@require_admin
 def get_all_soldiers():
     """Get all soldiers from the users table (simplified structure)"""
     try:
@@ -1561,6 +1582,7 @@ def get_all_soldiers():
 
 
 @admin_bp.route('/user-survey-history/<string:force_id>', methods=['GET'])
+@require_admin
 def get_user_survey_history(force_id):
     """Get all survey history for a specific user"""
     try:
@@ -1728,6 +1750,7 @@ def get_user_survey_history(force_id):
 
 
 @admin_bp.route('/survey-session-responses/<int:session_id>', methods=['GET'])
+@require_admin
 def get_survey_session_responses(session_id):
     """Get question responses for a specific survey session"""
     try:

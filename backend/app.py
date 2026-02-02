@@ -19,14 +19,36 @@ from services.model_preloader_service import ModelPreloaderService
 
 def create_app():
     app = Flask(__name__)
-    
-    # Configure Flask sessions with dynamic timeout
-    app.config['SECRET_KEY'] = os.getenv('SECRET_KEY', 'crpf-mental-health-secret-key-change-in-production')
-    
+
+    # Configure Flask sessions - SECRET_KEY is REQUIRED for security
+    secret_key = os.getenv('SECRET_KEY')
+
+    # Validate SECRET_KEY is properly configured
+    if not secret_key:
+        raise ValueError(
+            "CRITICAL: SECRET_KEY environment variable is required. "
+            "Generate one with: python -c \"import secrets; print(secrets.token_hex(32))\""
+        )
+
+    # Prevent use of the old insecure default key
+    insecure_defaults = [
+        'crpf-mental-health-secret-key-change-in-production',
+        'change-me-in-production',
+        'secret-key',
+        'dev-secret-key'
+    ]
+    if secret_key in insecure_defaults:
+        raise ValueError(
+            "CRITICAL: Insecure default SECRET_KEY detected. "
+            "Please generate a secure key with: python -c \"import secrets; print(secrets.token_hex(32))\""
+        )
+
+    app.config['SECRET_KEY'] = secret_key
+
     # Use dynamic session timeout, with fallback to settings default
     try:
         session_timeout = get_dynamic_session_timeout()
-    except:
+    except Exception:
         session_timeout = settings.SESSION_TIMEOUT
         
     app.config['PERMANENT_SESSION_LIFETIME'] = timedelta(seconds=session_timeout)

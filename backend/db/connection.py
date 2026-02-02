@@ -2,6 +2,9 @@ import os
 import mysql.connector
 from dotenv import load_dotenv
 from pathlib import Path
+import logging
+
+logger = logging.getLogger(__name__)
 
 # Load environment variables
 backend_dir = Path(__file__).resolve().parent.parent
@@ -15,8 +18,12 @@ DB_PASSWORD = os.getenv('DB_PASSWORD')
 DB_HOST = os.getenv('DB_HOST')
 DB_PORT = int(os.getenv('DB_PORT', 3306))
 
-print(f"Loading environment from: {env_path}")
-print(f"Connecting to database: {DB_NAME} on {DB_HOST}:{DB_PORT} as {DB_USER}")
+# Validate required database configuration
+if not all([DB_NAME, DB_USER, DB_PASSWORD, DB_HOST]):
+    raise ValueError("Missing required database configuration. Check DB_NAME, DB_USER, DB_PASSWORD, DB_HOST environment variables.")
+
+# Log initialization without exposing sensitive details
+logger.info("Database connection module initialized")
 
 def get_connection():
     """
@@ -32,7 +39,7 @@ def get_connection():
         )
         return connection
     except mysql.connector.Error as e:
-        print("❌ Error getting MySQL connection:", e)
+        logger.error(f"Database connection error: {e}")
         raise e
 
 def release_connection(conn):
@@ -65,7 +72,7 @@ def execute_query(query, params=None, fetch=True):
     except mysql.connector.Error as e:
         if conn:
             conn.rollback()
-        print("❌ Query execution error:", e)
+        logger.error(f"Query execution error: {e}")
         raise e
     finally:
         if cursor:
