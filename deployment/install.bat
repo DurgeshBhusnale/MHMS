@@ -1,13 +1,15 @@
 @echo off
+setlocal enabledelayedexpansion
 title CRPF Mental Health System - Installation
 echo ============================================================
 echo    CRPF MENTAL HEALTH & WELLNESS SYSTEM
 echo    Project Dependencies Installation Script
 echo ============================================================
 echo.
-echo ⚠️  IMPORTANT: This script installs PROJECT dependencies only
-echo    Python, Node.js, and MySQL must be installed separately
-echo    by the developer before running this script
+echo This script will:
+echo   - Offer to install Python, Node.js, and MySQL if missing (with your permission)
+echo   - Install project dependencies (backend, frontend)
+echo   - Build the frontend and create a desktop shortcut
 echo ============================================================
 echo.
 
@@ -20,16 +22,30 @@ if %errorlevel% neq 0 (
     exit /b 1
 )
 
-echo [1/6] Checking System Requirements...
+echo [1/7] Checking System Requirements...
 echo.
 
 REM Check Python installation
 echo Checking Python installation...
 python --version >nul 2>&1
 if %errorlevel% neq 0 (
-    echo ERROR: Python is not installed!
-    echo Please install Python 3.8 or higher from: https://python.org
-    echo Make sure to check "Add Python to PATH" during installation
+    echo Python is not installed.
+    set /p install_py="Would you like to install Python 3.8 now via winget? (y/N): "
+    if /i "!install_py!"=="y" (
+        echo Installing Python 3.8...
+        winget install Python.Python.3.8 --accept-package-agreements --accept-source-agreements
+        if !errorlevel! neq 0 (
+            echo ERROR: Python installation failed. Install manually from https://python.org
+            pause
+            exit /b 1
+        )
+        echo.
+        echo Python was installed. Please close this window, open a NEW Command Prompt
+        echo as Administrator, and run this script again so PATH is updated.
+        pause
+        exit /b 0
+    )
+    echo ERROR: Python 3.8 is required. Install from https://python.org
     pause
     exit /b 1
 )
@@ -40,8 +56,23 @@ REM Check Node.js installation
 echo Checking Node.js installation...
 node --version >nul 2>&1
 if %errorlevel% neq 0 (
-    echo ERROR: Node.js is not installed!
-    echo Please install Node.js from: https://nodejs.org
+    echo Node.js is not installed.
+    set /p install_node="Would you like to install Node.js LTS now via winget? (y/N): "
+    if /i "!install_node!"=="y" (
+        echo Installing Node.js...
+        winget install OpenJS.NodeJS.LTS --accept-package-agreements --accept-source-agreements
+        if !errorlevel! neq 0 (
+            echo ERROR: Node.js installation failed. Install manually from https://nodejs.org
+            pause
+            exit /b 1
+        )
+        echo.
+        echo Node.js was installed. Please close this window, open a NEW Command Prompt
+        echo as Administrator, and run this script again so PATH is updated.
+        pause
+        exit /b 0
+    )
+    echo ERROR: Node.js is required. Install from https://nodejs.org
     pause
     exit /b 1
 )
@@ -53,18 +84,27 @@ REM Check MySQL
 echo Checking MySQL installation...
 mysql --version >nul 2>&1
 if %errorlevel% neq 0 (
-    echo WARNING: MySQL command not found in PATH
-    echo Please ensure MySQL is installed and running
-    echo Continue anyway? (y/N): 
-    set /p continue=
-    if /i not "%continue%"=="y" exit /b 1
+    echo MySQL is not installed or not in PATH.
+    set /p install_mysql="Would you like to install MySQL now via winget? (y/N): "
+    if /i "!install_mysql!"=="y" (
+        echo Installing MySQL...
+        winget install Oracle.MySQL --accept-package-agreements --accept-source-agreements
+        if !errorlevel! neq 0 (
+            echo WARNING: MySQL installation failed or was skipped.
+            echo You can install MySQL manually from https://dev.mysql.com/downloads/
+        ) else (
+            echo MySQL was installed. You may need to open a new Command Prompt and run this script again.
+        )
+    )
+    set /p continue="Continue without MySQL (install later)? (y/N): "
+    if /i not "!continue!"=="y" exit /b 1
 ) else (
     mysql --version
     echo ✅ MySQL found
 )
 
 echo.
-echo [2/6] Installing Python Dependencies...
+echo [2/7] Installing Python Dependencies...
 cd /d "%~dp0\..\backend"
 pip install -r requirements.txt
 if %errorlevel% neq 0 (

@@ -553,7 +553,7 @@ def update_model_with_feedback(predicted_scores, clinical_outcomes):
 │ user_type       │     │status           │     │question_text_hi │
 │ created_at      │     │total_questions  │     │created_at       │
 │ last_login      │     │created_at       │     └─────────────────┘
-└─────────────────┘     └─────────────────┘              │
+└─────────────────┘     └─────────────────┘               │
          │                        │                       │
          │                        └───────────────────────┘
          │
